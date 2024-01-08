@@ -1,10 +1,10 @@
-import React, {useState, useEffect, useCallback} from "react";
+import React, { useState, useEffect } from "react";
 import styles from "./DetailProduct.module.css";
 import stylesCard from "../../components/CartItem/CartItem.module.css";
-import {useParams} from "react-router-dom";
+import { useParams } from "react-router-dom";
 import StarRating from "../../components/StarRating/StarRating";
 import BlackButton from "../../components/Button/Button";
-import {Formik, Form, Field} from "formik";
+import { Formik, Form, Field } from "formik";
 import DetailProductSlider from "../../components/DetailProductSlider/DetailProductSlider";
 import DetailProductButtonGroup from "../../components/DetailProductButtonGroup/DetailProductButtonGroup";
 import axios from "axios";
@@ -12,13 +12,13 @@ import NoPage from "../NoPage/NoPage";
 import DetaiLComentsCard from "../../components/DetaliComentsCard/DetaliComentsCard";
 import AdaptiveNav from "../../components/AdaptiveNav/AdaptiveNav";
 import Counter from "../../components/Counter/Counter";
-import {useDispatch} from "react-redux";
-import {addToCart} from "../../stores/cartProducts/action";
-import {toast} from "react-toastify";
+import { useDispatch } from "react-redux";
+import { addToCart } from "../../stores/cartProducts/action";
+import { toast } from "react-toastify";
 import RecommendationProducts from "../../components/RecommendationProducts/RecommendationProducts";
 import Preloader from "../../components/Preloader/Preloader";
-import {scrollToTop} from "../../utils/scrollToTop";
-
+import { scrollToTop } from "../../utils/scrollToTop";
+import { URL } from "../../variables";
 const styleBlack = {
     backgroundColor: "black",
     padding: "10px 20px",
@@ -28,52 +28,39 @@ const styleBlack = {
     justifyContent: "center",
 };
 
+const styleDisabled = {
+    ...styleBlack,
+    pointerEvents: "none",
+    backgroundColor: "var(--separator-line)",
+    boxShadow: "none"
+};
+
 const DetailProduct = () => {
-    const [noAvailability, setNoAvailability] = useState(null);
-    const [recommendations, setRecommendations] = useState([]);
+    const [recomendUrl, setRecomendUrl] = useState("");
     const [info, setInfo] = useState(null);
-    const {id} = useParams();
+    const { id } = useParams();
     const dispatch = useDispatch();
 
-    const recommendationsFilter = useCallback(
-        (arr) => {
-            const filterArr = arr.filter((item) => item._id !== info._id);
-            setRecommendations(filterArr);
-        },
-        [info]
-    );
+    const generatorUrl = (obj) => {
+        const url = `page=1&limit=4&sex=${obj.sex}&category=${obj.category}`;
+        setRecomendUrl(url);
+    };
 
     useEffect(() => {
         scrollToTop();
+        setInfo(null);
         axios
-            .get(
-                `https://shopcoserver-git-main-chesterfalmen.vercel.app/api/oneGoods/${id}`
-            )
+            .get(`${URL}oneGoods/${id}`)
             .then((res) => {
                 setInfo(res.data);
+                generatorUrl(res.data);
             })
             .catch((error) => {
                 console.error(error);
             });
     }, [id]);
 
-    useEffect(() => {
-        if (info) {
-            axios
-                .get(
-                    `https://shopcoserver-git-main-chesterfalmen.vercel.app/api/category/${info.category}`
-                )
-                .then((response) => {
-                    recommendationsFilter(response.data);
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
-        }
-    }, [info, recommendationsFilter]);
-
-    const handleSubmit = (values, {setSubmitting}) => {
-        setNoAvailability(null);
+    const handleSubmit = (values, { setSubmitting }) => {
         const selectedSize = values.size;
         const selectedAmount = values.amount;
         const selectedSizeObj = info.sizes.find(
@@ -87,8 +74,6 @@ const DetailProduct = () => {
             };
             dispatch(addToCart(tryToCart));
         } else {
-            const errorMessage = "Not enough items available.";
-            setNoAvailability(errorMessage);
             console.warn("No item is available.Choose less amount");
             toast.error("This quantity is  not available");
         }
@@ -96,9 +81,9 @@ const DetailProduct = () => {
     };
 
     if (!/^[0-9a-fA-F]{24}$/.test(id)) {
-        return <NoPage/>;
+        return <NoPage />;
     } else if (!info) {
-        return (<Preloader/>);
+        return <Preloader />;
     }
 
     return (
@@ -106,21 +91,23 @@ const DetailProduct = () => {
             <AdaptiveNav
                 linksObj={{
                     home: "/",
-                    [info.style]: `/${info.style}`,
-                    [info.sex]: `/${info.sex}`,
-                    [info.category]: `/${info.style}/${info.sex}/${info.category}`,
+                    [info.style]: `/allproducts?page=1&limit=9&style=${info.style}&minprice=0&maxprice=1000`,
+                    [info.sex]: `/allproducts?page=1&limit=9&sex=${info.sex}&minprice=0&maxprice=1000`,
+                    [info.category]: `/allproducts?page=1&limit=9&category=${info.category}&minprice=0&maxprice=1000`,
                 }}
             />
             <div className={styles.productWrapper}>
-                <DetailProductSlider imageArr={info.url_image}/>
+                <DetailProductSlider info={info} />
                 <Formik
                     initialValues={{
-                        size: info.sizes[0].size,
+                        size:
+                            info.sizes.find((size) => size.count >= 1)?.size ||
+                            null,
                         amount: Number(1),
                     }}
                     onSubmit={handleSubmit}
                 >
-                    {({values}) => (
+                    {({ values }) => (
                         <Form>
                             <div className={styles.productContent}>
                                 <h1 className={styles.productTitle}>
@@ -155,15 +142,10 @@ const DetailProduct = () => {
                                 </p>
                                 <div className={styles.sizeFilter}>
                                     <DetailProductButtonGroup
-                                        sizes={info.sizes.map(
-                                            (item) => item.size
-                                        )}
+                                        sizes={info.sizes}
                                         values={values}
                                     />
                                 </div>
-                                {noAvailability ? (
-                                    <p>{noAvailability}</p>
-                                ) : null}
                                 <div className={styles.purchaseFilter}>
                                     <div
                                         className={stylesCard.cartQuantity}
@@ -172,30 +154,40 @@ const DetailProduct = () => {
                                             alignItems: "center",
                                         }}
                                     >
-                                        <Field name="amount">
-                                            {({field, form}) => (
-                                                <Counter
-                                                    quantity={field.value}
-                                                    onDecrease={() =>
-                                                        form.setFieldValue(
-                                                            "amount",
-                                                            field.value - 1
-                                                        )
-                                                    }
-                                                    onIncrease={() =>
-                                                        form.setFieldValue(
-                                                            "amount",
-                                                            field.value + 1
-                                                        )
-                                                    }
-                                                />
-                                            )}
-                                        </Field>
+                                        {values.size && (
+                                            <Field name="amount">
+                                                {({ field, form }) => (
+                                                    <Counter
+                                                        quantity={field.value}
+                                                        onDecrease={() =>
+                                                            form.setFieldValue(
+                                                                "amount",
+                                                                field.value - 1
+                                                            )
+                                                        }
+                                                        onIncrease={() =>
+                                                            form.setFieldValue(
+                                                                "amount",
+                                                                field.value + 1
+                                                            )
+                                                        }
+                                                    />
+                                                )}
+                                            </Field>
+                                        )}
                                     </div>
                                     <BlackButton
                                         type="submit"
-                                        text="Add to cart"
-                                        style={styleBlack}
+                                        text={
+                                            values.size
+                                                ? "Add to cart"
+                                                : "No items left"
+                                        }
+                                        style={
+                                            values.size
+                                                ? styleBlack
+                                                : styleDisabled
+                                        }
                                     />
                                 </div>
                             </div>
@@ -203,10 +195,14 @@ const DetailProduct = () => {
                     )}
                 </Formik>
             </div>
-            <DetaiLComentsCard idGoods={id}/>
+            <DetaiLComentsCard
+                idGoods={id}
+                details={info.details}
+                FAQ={info.about}
+            />
             <RecommendationProducts
                 title={"You might also like"}
-                arrayofProducts={recommendations}
+                urlParams={recomendUrl}
             ></RecommendationProducts>
         </div>
     );

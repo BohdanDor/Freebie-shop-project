@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import Carousel from "react-multi-carousel";
 import CommentsCard from "../CommentsCard/CommentsCard";
@@ -8,19 +8,19 @@ import PropTypes from "prop-types";
 
 const responsive = {
     desktop: {
-        breakpoint: {max: 3000, min: 1200},
+        breakpoint: { max: 3000, min: 1200 },
         items: 3,
         slidesToSlide: 3,
         centerMode: "true",
     },
     tablet: {
-        breakpoint: {max: 1199, min: 780},
+        breakpoint: { max: 1199, min: 780 },
         items: 2,
         slidesToSlide: 2,
         centerMode: "true",
     },
     mobile: {
-        breakpoint: {max: 779, min: 0},
+        breakpoint: { max: 779, min: 0 },
         items: 1,
         slidesToSlide: 1,
         partialVisibilityGutter: 0,
@@ -28,7 +28,7 @@ const responsive = {
     },
 };
 
-const CommentsSlider = ({title, link}) => {
+const CommentsSlider = ({ title, link }) => {
     const [comments, setComments] = useState([]);
     const carouselRef = useRef(null);
 
@@ -39,24 +39,24 @@ const CommentsSlider = ({title, link}) => {
                 setComments(res.data);
             })
             .catch((error) => {
-                console.error("404", error);
+                console.error("405", error);
             });
+        
     }, [link]);
+
+
 
     const commentsBlock = comments.map((item, index) => (
         <CommentsCard
             key={index}
             firstName={item.firstName}
-            lastName={item.lastName}
             commentaries={item.text}
             rating={item.rating}
             style={{
-                width: "350px",
+                width: "330px",
                 height: "200px",
                 margin: "0 auto 10px",
-
             }}
-
         />
     ));
 
@@ -104,10 +104,7 @@ const CommentsSlider = ({title, link}) => {
 
 CommentsSlider.propTypes = {
     title: PropTypes.string,
-    link: PropTypes.string
+    link: PropTypes.string,
 };
 
-
 export default CommentsSlider;
-
-

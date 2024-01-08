@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import styles from "./Header.module.css";
 import SlMenu from "../../assets/icons/Header/Burger-Menu.svg";
@@ -12,8 +12,13 @@ import CartSVG from "../../assets/icons/Header/Cart.svg";
 import HeartSVG from "../../assets/icons/Header/Heart.svg";
 import NavigationBar from "../NavigationBar/NavigationBar";
 import SearchBar from "../SearchBar/SearchBar";
-import { scrollToTop } from "../../utils/scrollToTop";
 import axios from "axios";
+import { useMediaQuery } from "@react-hook/media-query";
+import { scrollToTop } from "../../utils/scrollToTop";
+import { checkAuthorization } from "../../stores/authorization/actions";
+import { defaultParams } from "../../variables";
+import { URL } from "../../variables";
+import { fetchCartItems } from "../../stores/cartProducts/action";
 
 const Header = () => {
     const [query, setQuery] = useState("");
@@ -21,21 +26,39 @@ const Header = () => {
     const [favoriteAmount, setFavoriteAmount] = useState(0);
     const [showNav, setShowNav] = useState(false);
     const [showSearch, setShowSearch] = useState(false);
+    const isDesktop = useMediaQuery("(min-width: 991px)");
+    const token = localStorage.getItem("token");
+    const dispatch = useDispatch();
+    const [LiveSearchOpenStatus, SetLiveSearchOpenStatus] = useState(false);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        dispatch(fetchCartItems());
+    }, [dispatch]);
 
     const favoriteProducts =
         useSelector((state) => state.favoritesReducer.favorites) || {};
 
     const cartProducts =
         useSelector((state) => state.cartReducer.cartItems) || {};
+    const isPersonAuthorised = useSelector(
+        (state) => state.authorizationReducer.isAuth
+    );
+    useEffect(() => {
+        dispatch(checkAuthorization(token));
+    }, [token, dispatch]);
 
     useEffect(() => {
-        if (!showNav && !showSearch) {
+        SetLiveSearchOpenStatus(false);
+    }, [LiveSearchOpenStatus]);
+
+    useEffect(() => {
+        if ((!showNav && !showSearch) || isDesktop) {
             document.body.style.overflow = "visible";
         } else {
             document.body.style.overflow = "hidden";
         }
-    }, [showNav, showSearch]);
+    }, [showNav, showSearch, isDesktop]);
 
     useEffect(() => {
         setCartAmount(cartProducts.length);
@@ -44,29 +67,26 @@ const Header = () => {
     useEffect(() => {
         setFavoriteAmount(favoriteProducts.length);
     }, [favoriteProducts.length]);
-    const token = localStorage.getItem("token");
+
     const isUserAuth = () => {
         const config = {
             headers: {
                 Authorization: `${token}`,
             },
         };
-        axios
-            .post(
-                "https://shopcoserver-git-main-chesterfalmen.vercel.app/api/isAuth",
-                "",
-                config
-            )
-            .then((res) => {
-                if (res.data.status === 200) {
-                    redirectAccount();
-                }
-                if (res.data.status !== 200) {
-                    redirectLogin();
-                }
-            });
+        const link = `${URL}isAuth`;
+        axios.post((link), "", config).then((res) => {
+            if (res.data.status === 200) {
+                redirectAccount();
+            }
+            if (res.data.status !== 200) {
+                redirectLogin();
+                localStorage.removeItem("token");
+            }
+        });
     };
-    const redirectAccount = () => navigate("/account");
+
+    const redirectAccount = () => navigate("/account/info");
     const redirectLogin = () => navigate("/login");
 
     const toggleNav = () => {
@@ -88,6 +108,7 @@ const Header = () => {
     };
 
     const hideAll = () => {
+        SetLiveSearchOpenStatus(true);
         setShowSearch(false);
         setShowNav(false);
     };
@@ -95,10 +116,10 @@ const Header = () => {
     const searchQueryHandler = (event) => {
         if (event.key === "Enter" && query.length > 0) {
             setTimeout(() => {
-                navigate(`/search/${query}`);
+                navigate(`${defaultParams}&search=${query}`);
                 hideSearch();
-                event.target.value = "";
-            }, 1000);
+            }, 2500);
+            hideAll();
         }
     };
     return (
@@ -106,13 +127,14 @@ const Header = () => {
             <div className={styles.notification}>
                 <span className={styles.info}>
                     <p>
-                        Sign up and get promo code for order.
+                        Sign up for special offers and discounts!
                         <Link
                             to="login"
                             onClick={() => {
                                 hideAll();
                                 scrollToTop();
                             }}
+                            className={styles.infoLink}
                         >
                             <span>Sign Up Now</span>
                         </Link>
@@ -125,14 +147,14 @@ const Header = () => {
                         <div className={styles.desktopMenuItems}>
                             {showNav ? (
                                 <NavigationBar
-                                    classList={`${styles.responsiveNav} ${styles.q} ${styles.desktopMenuList}`}
-                                    clickFunc={hideNav}
+                                    classList={`${styles.responsiveNav} ${styles.animationList} ${styles.desktopMenuList}`}
+                                    clickFunc={hideAll}
                                     data-testid="navigation-menu"
                                 />
                             ) : (
                                 <NavigationBar
                                     classList={styles.desktopMenuList}
-                                    clickFunc={hideNav}
+                                    clickFunc={hideAll}
                                 />
                             )}
 
@@ -148,13 +170,15 @@ const Header = () => {
                                 </div>
                                 {showSearch ? (
                                     <SearchBar
-                                        classList={`${styles.responsiveSearch} ${styles.q} ${styles.desktopSearchBar}`}
+                                        classList={`${styles.responsiveSearch} ${styles.animationList} ${styles.desktopSearchBar}`}
                                         onChangeFunc={(e) =>
                                             setQuery(e.target.value)
                                         }
                                         onKeyUpFunc={(e) =>
                                             searchQueryHandler(e)
                                         }
+                                        closeTabsFunc={hideAll}
+                                        LiveSearchStatus={LiveSearchOpenStatus}
                                     />
                                 ) : (
                                     <SearchBar
@@ -165,6 +189,8 @@ const Header = () => {
                                         onKeyUpFunc={(e) =>
                                             searchQueryHandler(e)
                                         }
+                                        closeTabsFunc={hideAll}
+                                        LiveSearchStatus={LiveSearchOpenStatus}
                                     />
                                 )}
 
@@ -223,7 +249,9 @@ const Header = () => {
                                 <Link
                                     to="cart"
                                     className={styles.svgRel}
-                                    onClick={hideAll}
+                                    onClick={() => {
+                                        hideAll();
+                                    }}
                                 >
                                     <img src={CartSVG} alt="Cart SVG" />
                                     {cartAmount > 0 && (
@@ -234,20 +262,22 @@ const Header = () => {
                                         </span>
                                     )}
                                 </Link>
-                                <Link
-                                    to="favourites"
-                                    onClick={hideAll}
-                                    className={styles.svgRel}
-                                >
-                                    <img src={HeartSVG} alt="Heart SVG" />
-                                    {favoriteAmount > 0 && (
-                                        <span id={styles["abs"]}>
-                                            <p className={styles.new}>
-                                                {favoriteAmount}
-                                            </p>
-                                        </span>
-                                    )}
-                                </Link>
+                                {isPersonAuthorised ? (
+                                    <Link
+                                        to="favourites"
+                                        onClick={hideAll}
+                                        className={styles.svgRel}
+                                    >
+                                        <img src={HeartSVG} alt="Heart SVG" />
+                                        {favoriteAmount > 0 && (
+                                            <span id={styles["abs"]}>
+                                                <p className={styles.new}>
+                                                    {favoriteAmount}
+                                                </p>
+                                            </span>
+                                        )}
+                                    </Link>
+                                ) : null}
                             </div>
                         </div>
                     </div>

@@ -1,4 +1,5 @@
 /* eslint-disable */
+
 import { ADD_TO_FAVORITES, REMOVE_FROM_FAVORITES } from "./action";
 
 const favoriteItems = localStorage.getItem("favoriteItems");
@@ -9,7 +10,6 @@ const initState = {
 
 const favoritesReducer = (state = initState, action) => {
     let newStateOfFav;
-
     switch (action.type) {
         // Add a product to favorites and update the state
         case ADD_TO_FAVORITES:
@@ -44,4 +44,3 @@ const favoritesReducer = (state = initState, action) => {
     }
 };
 export default favoritesReducer;
-/* eslint-disable */

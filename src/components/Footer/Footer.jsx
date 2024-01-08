@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import styles from "./Footer.module.css";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
@@ -6,20 +6,17 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { Link } from "react-router-dom";
 
-
 import FaceBookIcon from "../../assets/icons/Social/Facebook.svg";
 import GitHubIcon from "../../assets/icons/Social/GitHub.svg";
 import InstagramIcon from "../../assets/icons/Social/Instagram.svg";
 import TwitterIcon from "../../assets/icons/Social/Twitter.svg";
-
 import ApplePayIcon from "../../assets/icons/Payment/ApplePay.svg";
 import GooglePayIcon from "../../assets/icons/Payment/GooglePay.svg";
 import MastercardIcon from "../../assets/icons/Payment/Mastercard.svg";
 import PayPalIcon from "../../assets/icons/Payment/PayPal.svg";
 import VisaIcon from "../../assets/icons/Payment/Visa.svg";
-
 import BlackButton from "../Button/Button";
-
+import { URL } from "../../variables";
 function Footer() {
     const validationSchema = Yup.object().shape({
         email: Yup.string()
@@ -30,32 +27,48 @@ function Footer() {
     const sections = [
         {
             title: "Company",
-            items: ["About", "Features", "Works", "Career"],
+            items: ["About", "Brands", "Works", "Career"],
         },
         {
             title: "Help",
-
             items: [
                 "Customer Support",
                 "Delivery Details",
                 "Terms & Conditions",
                 "Privacy Policy",
             ],
-
         },
         {
             title: "FAQ",
-            items: ["About", "Features", "Works", "Career"],
+            items: ["About", "Manage Deliveries", "Orders", "Payments"],
         },
         {
             title: "Resources",
-            items: ["Account", "Manage Deliveries", "Orders", "Payments"],
-
+            items: [
+                "Free eBooks",
+                "Development Tutorial",
+                "How to - Blog",
+                "Youtube Playlist",
+            ],
         },
-
- 
-
     ];
+
+    const [isErrorMessageVisible, setIsErrorMessageVisible] = useState(true);
+
+    const showErrorMessageAgain = () => {
+        setIsErrorMessageVisible(true);
+    };
+
+    useEffect(() => {
+        if (isErrorMessageVisible) {
+            const timeoutId = setTimeout(() => {
+                setIsErrorMessageVisible(false);
+            }, 3000);
+            return () => {
+                clearTimeout(timeoutId);
+            };
+        }
+    }, [isErrorMessageVisible]);
 
     return (
         <footer className={styles.FooterContainer}>
@@ -70,42 +83,34 @@ function Footer() {
                             initialValues={{ email: "" }}
                             onSubmit={async (values, actions) => {
                                 try {
-                                    const apiUrl =
-                                        "https://shopcoserver-git-main-chesterfalmen.vercel.app/api/addNewsletter";
-                                    await axios.post(apiUrl, values);
-
+                                    const apiUrl = `${URL}addNewsletter`;
                                     const response = await axios.post(
                                         apiUrl,
                                         values
                                     );
-                                    if (response.status === 200) {
-                                        toast.success(
-                                            "Successful subscription to the newsletter!"
-                                        );
 
-                                    } else if (response.status === 400) {
-                                        if (
-                                            response.data.message ===
-                                            "The user is already subscribed to the store"
-                                        ) {
-                                            console.error(
-                                                "User is already subscribed:",
-                                                response.data.message
+                                    if (response.status === 200) {
+                                        const responseData = response.data;
+                                        if (responseData.status === 400) {
+                                            toast.error(
+                                                "You are already subscribed to the store"
                                             );
                                         } else {
-                                            console.error(
-                                                "Error:",
-                                                response.data
+                                            toast.success(
+                                                "You have successfully subscribed to the newsletter!"
                                             );
                                         }
                                     } else {
-                                        console.error(
-                                            "Server error: Server Error"
+                                        toast.error(
+                                            "Error: Unexpected status - " +
+                                                response.status
                                         );
                                     }
+                                    setIsErrorMessageVisible(true);
                                     actions.resetForm();
                                 } catch (error) {
                                     console.error("Error sending data", error);
+                                    setIsErrorMessageVisible(true);
                                 }
                             }}
                         >
@@ -121,11 +126,13 @@ function Footer() {
                                     className={styles.MailFormBox}
                                     onSubmit={handleSubmit}
                                 >
-                                    <ErrorMessage
-                                        name="email"
-                                        component="div"
-                                        className={styles.BugEmail}
-                                    />
+                                    {isErrorMessageVisible && (
+                                        <ErrorMessage
+                                            name="email"
+                                            component="div"
+                                            className={styles.BugEmail}
+                                        />
+                                    )}
                                     <Field
                                         name="email"
                                         placeholder="Enter your email address"
@@ -145,6 +152,7 @@ function Footer() {
                                                     "var(--gray-primary)",
                                                 width: "100%",
                                             }}
+                                            onClick={showErrorMessageAgain}
                                         />
                                     </div>
                                 </Form>
@@ -185,15 +193,20 @@ function Footer() {
                             </h3>
                             <ul className={styles.FooterList}>
                                 {section.items.map((item, i) => (
-
-                                    <li key={i} className={styles.FooterListItem}>
-                                        <Link className={styles.FooterListLink}
-                                            to={`/${item.toLowerCase().replace(/ /g, "-")}`}
+                                    <li
+                                        key={i}
+                                        className={styles.FooterListItem}
+                                    >
+                                        <Link
+                                            className={styles.FooterListLink}
+                                            to={`/${item
+                                                .toLowerCase()
+                                                .replace(/ /g, "-")}`}
                                         >
-                                            {item === "Terms And Conditions" ? "Terms And Conditions" : item}
+                                            {item === "Terms And Conditions"
+                                                ? "Terms And Conditions"
+                                                : item}
                                         </Link>
-
-
                                     </li>
                                 ))}
                             </ul>
